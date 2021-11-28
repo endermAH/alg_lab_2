@@ -49,7 +49,7 @@ public:
     
     int insert(const T& value);
     int insert(int index, const T& value);
-    
+    void set(int index, const T& value);
     
     void remove(int index);
     
@@ -62,10 +62,7 @@ public:
     void printArrayInfo();
     
     Iterator iterator();
-//    ConstIterator iterator() const;
-    
     Iterator reverseIterator();
-//    ConstIterator reverseIterator() const;
 };
 
 
@@ -91,7 +88,7 @@ T& Array<T>::Iterator::get() const {
 
 template <typename T>
 void Array<T>::Iterator::set(const T& value) {
-    arr_[current_index_] = value;
+   arr_->set(current_index_, value);
 }
 
 template <typename T>
@@ -102,7 +99,7 @@ void Array<T>::Iterator::next() {
 template <typename T>
 bool Array<T>::Iterator::hasNext() const {
     if (type_ == Iterator::kNotReverceType)
-        return !(current_index_ == arr_->size() - 1);
+        return !(current_index_ >= arr_->size() - 1);
     else
         return !(current_index_ == 0);
 }
@@ -162,7 +159,7 @@ Array<T>::~Array() {
 
 template <typename T>
 int Array<T>::insert(const T& value) {
-    if (count_ >= capacity_) {
+    if (count_ + 1 >= capacity_) {
         extend();
     }
     if (std::is_move_constructible<T>::value) {
@@ -171,8 +168,52 @@ int Array<T>::insert(const T& value) {
         new(buffer_ + count_) T(value);
     }
     count_ += 1;
-    return count_;
+    return count_ - 1;
 }
+
+template <typename T>
+int Array<T>::insert(int index, const T& value) {
+    if (count_ + 1 >= capacity_) {
+        extend();
+    }
+    for (int i=count_; i > index; i--) {
+        if (std::is_move_constructible<T>::value) {
+            new(buffer_ + i) T(std::move_if_noexcept(buffer_[i-1]));
+        } else {
+            new(buffer_ + i) T(buffer_[i-1]);
+        }
+    }
+    if (std::is_move_constructible<T>::value) {
+        new(buffer_ + index) T(std::move_if_noexcept(value));
+    } else {
+        new(buffer_ + index) T(value);
+    }
+    count_ += 1;
+    return index;
+}
+
+template <typename T>
+void Array<T>::set(int index, const T& value) {
+    if (std::is_move_constructible<T>::value) {
+        new(buffer_ + index) T(std::move_if_noexcept(value));
+    } else {
+        new(buffer_ + index) T(value);
+    }
+}
+
+template <typename T>
+void Array<T>::remove(int index) {
+    for (int i = index; i < count_ - 1; i++) {
+        if (std::is_move_constructible<T>::value) {
+            new(buffer_ + i) T(std::move_if_noexcept(buffer_[i+1]));
+        } else {
+            new(buffer_ + i) T(buffer_[i+1]);
+        }
+    }
+    count_ -= 1;
+    this->at(count_).~T();
+}
+
 
 template <typename T>
 int Array<T>::size() const {
